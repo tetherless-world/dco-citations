@@ -1,0 +1,4 @@
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^citation/([a-zA-Z0-9/-]+)$ api.php?get_citation=$1
+</IfModule>
