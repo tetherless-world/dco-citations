@@ -1,4 +1,11 @@
+# Instructions:
+# In order to make this file work, one need to set the "AllowOverride" property in /etc/apache2/http.conf
+# or you can add the scripts below into http.conf
+# Remember, to make URL rewrite work, uncomment in http.conf "LoadModule rewrite_module libexec/apache2/mod_rewrite.so"
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^citation/([a-zA-Z0-9/-]+)$ api.php?get_citation=$1
+#RewriteCond %{REQUEST_FILENAME} !-f
+#RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule citation/(.*) http://localhost/api.php?get_citation=$1
 </IfModule>
