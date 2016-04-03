@@ -1,11 +1,8 @@
-# Instructions:
-# In order to make this file work, one need to set the "AllowOverride" property in /etc/apache2/http.conf
-# or you can add the scripts below into http.conf
-# Remember, to make URL rewrite work, uncomment in http.conf "LoadModule rewrite_module libexec/apache2/mod_rewrite.so"
+# The following is a snippet of the .htaccess file in /var/www/html. The rule needs to go right after the RewriteEngine On
 
 <IfModule mod_rewrite.c>
 RewriteEngine On
-#RewriteCond %{REQUEST_FILENAME} !-f
-#RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule citation/(.*) http://localhost/api.php?get_citation=$1
+RewriteRule ^citation/(.*) api.php?get_citation=$1 [L]
+
+# Rest of the rewrite module code goes here
 </IfModule>
