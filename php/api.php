@@ -49,9 +49,8 @@ DESCRIBE ?p ?dcoIdObject ?author_role ?author ?journal
 WHERE
 {
     ?dcoIdObject a dco:DCOID .
-    ?dcoIdObject rdfs:label '11121/3524-1246-5132-9229-CC' .
+    ?dcoIdObject rdfs:label ?id .
     ?p dco:hasDcoId ?dcoIdObject .
-    ?dcoIdObject rdfs:label '" . $id . "' .
     ?p vivo:relatedBy ?author_role .
     ?author_role a vivo:Authorship .
     ?author_role vivo:relates ?author .
@@ -63,6 +62,8 @@ WHERE
 }
 ";
 
+    $query = str_replace("?id", '"'.$id.'"', $query);
+
     // DCO-ID for test: 11121/3524-1246-5132-9229-CC
 
     $searchUrl = 'http://deepcarbon.tw.rpi.edu:3030/VIVO/query?'
@@ -72,6 +73,11 @@ WHERE
     $responseArray = json_decode(request($searchUrl), true);
 
     return $responseArray;
+}
+
+function format_names($names)
+{
+   return trim($names[0]) . " " . substr(trim($names[1]),0,1);
 }
 
 $value = "An error has occurred";
@@ -152,9 +158,12 @@ $isfirst = true ;
 foreach($authors as $key => $author)
 {
     $names = explode(",", $author);
-    if( !$isfirst ) $citation .= " ";
-    $isfirst = false ;
-    $citation .= trim($names[0]) . ", " . substr(trim($names[1]),0,1) . ",";
+    if( $isfirst ) {
+        $citation .= format_names($names);
+        $isfirst = false;
+    } else {
+        $citation .= ", " . format_names($names);
+    }    
 }
 
 // if there's a year then add it
