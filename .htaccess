@@ -2,7 +2,7 @@
 
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^citation/(.*) api.php?get_citation=$1 [L]
+RewriteRule ^citation/(.*) citation.php?get_citation=$1 [L]
 
 # Rest of the rewrite module code goes here
 </IfModule>
