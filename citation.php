@@ -151,7 +151,11 @@ if( isset( $pub["http://vivoweb.org/ontology/core#relatedBy"] ) )
 }
 
 // now we generate the citation
-$citation = "";
+$html = "<html>
+<head>
+<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/citation.css\">
+</head>
+<body>";
 
 // the authors go first and should be in order
 $isfirst = true ;
@@ -223,8 +227,12 @@ if( isset($start) || isset($end) )
     if( isset($end) ) $citation .= "-" . $end ;
 }
 
+$html .= "$citation
+</body>
+</html>";
+
 // and we're done, exit with the generated citation
 //exit(json_encode($pub));
-exit($citation);
+exit($html);
 
 ?>
