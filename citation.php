@@ -143,23 +143,29 @@ if( isset( $pub["http://vivoweb.org/ontology/core#relatedBy"] ) )
     foreach( $authorRoles as $role )
     {
         $roleuri = $role["value"];
-        $relates = $value[$roleuri]["http://vivoweb.org/ontology/core#relates"];
-        if( isset( $value[$roleuri]["http://vivoweb.org/ontology/core#rank"] ) )
+        if( isset( $value[$roleuri] ) )
         {
-            $rank = $value[$roleuri]["http://vivoweb.org/ontology/core#rank"][0]["value"];
-        }
-        $author = null ;
-        foreach( $relates as $relate )
-        {
-            if( $relate["value"] != $puburi )
+            $relates = $value[$roleuri]["http://vivoweb.org/ontology/core#relates"];
+            if( isset( $value[$roleuri]["http://vivoweb.org/ontology/core#rank"] ) )
             {
-                $author = $value[$relate["value"]];
-                $name = $author["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"];
-                $authors[intval($rank)] = format_name($name);
+                $rank = $value[$roleuri]["http://vivoweb.org/ontology/core#rank"][0]["value"];
             }
+            $author = null ;
+            foreach( $relates as $relate )
+            {
+                if( $relate["value"] != $puburi )
+                {
+                    $author = $value[$relate["value"]];
+                    $name = $author["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"];
+                    $authors[intval($rank)] = format_name($name);
+                }
+            }
+        } else {
+            $authors[intval($rank)] = "Missing" ;
         }
     }
 }
+ksort( $authors ) ;
 
 // now we generate the citation
 $citation = "";
