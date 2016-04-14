@@ -168,11 +168,9 @@ if( isset( $pub["http://vivoweb.org/ontology/core#relatedBy"] ) )
 ksort( $authors ) ;
 
 // now we generate the citation
-$html = "<html>
-<head>
-<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/citation.css\">
-</head>
-<body>";
+$citation = "";
+$html = "<div class=\"citationbody\">
+<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/citation.css\">";
 
 // the authors go first and should be in order
 $isfirst = true ;
@@ -204,7 +202,7 @@ if( isset( $pub["http://purl.org/ontology/bibo/doi"] ) )
 }
 
 // add the title with the link
-$citation .= " <a href=\"$link\">" . $pub["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"] . "</a>.";
+$citation .= " <a class=\"citationlink\" href=\"$link\">" . $pub["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"] . "</a>.";
 
 // if there's a publication venue (journal, book or whatever) then add it
 if( isset( $pub["http://vivoweb.org/ontology/core#hasPublicationVenue"] ) )
@@ -244,8 +242,7 @@ if( isset($start) || isset($end) )
 }
 
 $html .= "$citation
-</body>
-</html>";
+</div>";
 
 // and we're done, exit with the generated citation
 //exit(json_encode($pub));
