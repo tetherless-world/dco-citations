@@ -35,32 +35,38 @@ function get_citation_by_id($id)
 {
     $format = 'json';
 
-$query = "
-PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
-PREFIX owl:   <http://www.w3.org/2002/07/owl#>
-PREFIX bibo: <http://purl.org/ontology/bibo/>
-PREFIX dco: <http://info.deepcarbon.net/schema#>
-PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-PREFIX vivo: <http://vivoweb.org/ontology/core#>
+    $query = "
+    PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
+    PREFIX owl:   <http://www.w3.org/2002/07/owl#>
+    PREFIX bibo: <http://purl.org/ontology/bibo/>
+    PREFIX dco: <http://info.deepcarbon.net/schema#>
+    PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+    PREFIX vivo: <http://vivoweb.org/ontology/core#>
 
-DESCRIBE ?p ?dcoIdObject ?author_role ?author ?journal
-WHERE
-{
-    ?dcoIdObject a dco:DCOID .
-    ?dcoIdObject rdfs:label ?id .
-    ?p dco:hasDcoId ?dcoIdObject .
-    ?p vivo:relatedBy ?author_role .
-    ?author_role a vivo:Authorship .
-    ?author_role vivo:relates ?author .
-    ?author a foaf:Person .
-    OPTIONAL {
-        ?doc vivo:hasPublicationVenue ?journal .
-        ?journal a bibo:Journal .
+    DESCRIBE ?p ?dcoid ?author_role ?author ?journal
+    WHERE
+    {
+        ?dcoid a dco:DCOID .
+        ?dcoid rdfs:label ?id .
+        ?p dco:hasDcoId ?dcoid .
+        { ?p a bibo:Article . } UNION 
+        { ?p a bibo:Book . } UNION 
+        { ?p a bibo:DocumentPart . } UNION 
+        { ?p a dco:Poster . } UNION 
+        { ?p a bibo:Thesis . }
+        ?p vivo:relatedBy ?author_role .
+        ?author_role a vivo:Authorship .
+        ?author_role vivo:relates ?author .
+        FILTER (?author != ?p)
+        ?author a foaf:Person .
+        OPTIONAL {
+            ?p vivo:hasPublicationVenue ?journal .
+            ?journal a bibo:Journal .
+        }
     }
-}
-";
+    ";
 
     $query = str_replace("?id", '"'.$id.'"', $query);
 
@@ -75,9 +81,10 @@ WHERE
     return $responseArray;
 }
 
-function format_names($names)
+function format_name($name)
 {
-   return trim($names[0]) . " " . substr(trim($names[1]),0,1);
+    $name = explode(",", $name);
+    return trim($name[0])." ".substr(trim($name[1]),0,1);
 }
 
 $value = "An error has occurred";
@@ -103,8 +110,11 @@ else if (isset($_GET["action"]))
     }
 }
 
-if( !empty( $dcoid ) )
+if( !empty( $dcoid ) ) 
     $value = get_citation_by_id($dcoid);
+
+if ($value == null)
+    exit("Invalid DCO-ID!");
 
 // build the full dcoid
 $dx = "http://dx.deepcarbon.net/".$dcoid;
@@ -144,7 +154,7 @@ if( isset( $pub["http://vivoweb.org/ontology/core#relatedBy"] ) )
             {
                 $author = $value[$relate["value"]];
                 $name = $author["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"];
-                $authors[intval($rank)] = $name ;
+                $authors[intval($rank)] = format_name($name);
             }
         }
     }
@@ -157,12 +167,11 @@ $citation = "";
 $isfirst = true ;
 foreach($authors as $key => $author)
 {
-    $names = explode(",", $author);
     if( $isfirst ) {
-        $citation .= format_names($names);
+        $citation .= $author;
         $isfirst = false;
     } else {
-        $citation .= ", " . format_names($names);
+        $citation .= ", ".$author;
     }    
 }
 
