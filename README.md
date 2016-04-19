@@ -1,6 +1,9 @@
 # dco-citations
 Generate formatted publication citation from DCO ID.
 
+The citation service is installed under /var/www/html/info for info.deepcarbon.net document root. The css/citation.css also goes under
+/var/www/html/info/css.
+
 A start will be having a serving that when user enters in the address bar, for instance, "`http://dx.deepcarbon.net/11121/2803-7494-8579-1947-CC?citation=PNAS`", the webpage then will show the user the citation generated in PNAS format for the corresponding publication.
 
 

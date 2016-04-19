@@ -1,8 +1,6 @@
 # The following is a snippet of the .htaccess file in /var/www/html. The rule needs to go right after the RewriteEngine On
 
-<IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteRule ^citation/(.*) citation.php?get_citation=$1 [L]
 
 # Rest of the rewrite module code goes here
-</IfModule>
