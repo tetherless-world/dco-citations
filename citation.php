@@ -39,7 +39,7 @@ function get_citation_by_id($id)
 {
     $pos = strpos($id, '/');
     $dcoid = substr( $id, $pos + 1 ) ;
-    $searchUrl = "http://localhost:9200/dco/publication/_search?q=_id:$dcoid";
+    $searchUrl = "http://localhost:49200/dco/publication/_search?q=_id:$dcoid";
 
     $responseArray = json_decode(request($searchUrl), true);
 
@@ -55,7 +55,7 @@ if (isset($_GET["get_citation"]))
 }
 else if (strpos($_SERVER["PATH_INFO"],"/11121/") == 0)
 {
-    $dcoid = substr( $_SERVER["PATH_INFO"], 6 );
+    $dcoid = substr( $_SERVER["PATH_INFO"], 1 );
 }
 else if (isset($_GET["action"]))
 {
