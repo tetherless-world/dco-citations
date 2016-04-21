@@ -39,7 +39,7 @@ function get_citation_by_id($id)
 {
     $pos = strpos($id, '/');
     $dcoid = substr( $id, $pos + 1 ) ;
-    $searchUrl = "http://data.deepcarbon.net/es/dco/publication/_search?q=_id:$dcoid";
+    $searchUrl = "http://localhost:49200/dco/publication/_search?q=_id:$dcoid";
 
     $responseArray = json_decode(request($searchUrl), true);
 
@@ -96,37 +96,13 @@ if( !in_array( $pub["mostSpecificType"], $valid_types ) )
 // build the full dcoid
 $dx = "http://dx.deepcarbon.net/".$dcoid;
 
-// helper funciton to format an author name into LAST FIMI format.
-function format_name($name)
-{
-    $comma_pos = strpos($name, ",");
-    if ( $comma_pos != FALSE)
-    {
-        $last_name = substr($name, 0, $comma_pos);
-        $fm_names = substr($name, $comma_pos); 
-    }
-    else 
-    {
-        $space_pos = strrpos($name, " ");
-        $last_name = substr($name, $space_pos);
-        $fm_names = substr($name, 0, $space_pos); 
-    }
-    $fm_names = preg_split( "/[,|.| |\-]/", $fm_names );
-    $output = $last_name . " ";
-    for ( $i = 0; $i < sizeof($fm_names); $i++)
-    {
-        $output .= strtoupper($fm_names[$i][0]);
-    }
-    return $output;
-}
-
 // get the list of authors. They are already ordered in elasticsearch
 $authors = array();
 if( isset( $pub["authors"] ) && count( $pub["authors"] ) != 0 )
 {
     foreach( $pub["authors"] as $author )
     {
-        array_push( $authors, format_name($author["name"]) ) ;
+        array_push( $authors, $author["name"] ) ;
     }
 }
 

@@ -1,0 +1,11 @@
+div.citationbody {
+    font-size:13px;
+    font-family:\"Helvetica Neue\",Helvetica,Arial,sans-serif;
+    font-weight:normal;
+    width:100%;
+}
+a.citationlink {
+    color: #0088cc;
+    text-decoration: none;
+}
+
