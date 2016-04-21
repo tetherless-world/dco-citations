@@ -1,7 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 
-$valid_types = array( "Journal Article" ) ;
+$valid_types = array( "Journal Article", "Conference Paper", "Conference Poster" ) ;
 
 // This is the API, 2 possibilities: show the app list or show a specific app by id.
 // This would normally be pulled from a database but for demo purposes, I will be hardcoding the return values.
@@ -90,7 +90,7 @@ $pub = $value["hits"]["hits"][0]["_source"] ;
 // right now we can only generate citations for certain types
 if( !in_array( $pub["mostSpecificType"], $valid_types ) )
 {
-    exit( "Unable to generate citation for this publication" ) ;
+    exit( "Unable to generate citation for this publication (type: ".$pub["mostSpecificType"].")" ) ;
 }
 
 // build the full dcoid
@@ -143,6 +143,9 @@ $citation .= " <a class=\"citationlink\" href=\"$link\">" . $pub["title"] . "</a
 if( isset( $pub["publishedIn"] ) )
 {
     $citation .= " " . $pub["publishedIn"]["name"] ;
+}
+elseif (isset( $pub["presentedAt"] )) {
+    $citation .= " " . $pub["presentedAt"]["name"] ;
 }
 
 // volue(issue):start-end
