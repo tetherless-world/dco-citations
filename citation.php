@@ -38,8 +38,8 @@ function request($url)
 function get_citation_by_id($id)
 {
     $pos = strpos($id, '/');
-    $dcoid = substr( $id, $pos + 1 ) ;
-    $searchUrl = "http://data.deepcarbon.net/es/dco/publication/_search?q=_id:$dcoid";
+    $dcoid = substr( $id, $pos + 1 );
+    $searchUrl = "localhost:49200/dco/publication/_search?q=_id:$dcoid";
 
     $responseArray = json_decode(request($searchUrl), true);
 
