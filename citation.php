@@ -115,7 +115,10 @@ function format_name($name)
     $output = $last_name . " ";
     for ( $i = 0; $i < sizeof($fm_names); $i++)
     {
-        $output .= strtoupper($fm_names[$i][0]);
+        if ( ctype_alnum($fm_names[$i][0]) )
+        {
+            $output .= strtoupper($fm_names[$i][0]);
+        }
     }
     return $output;
 }
