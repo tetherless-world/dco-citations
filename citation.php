@@ -1,9 +1,12 @@
 <?php
 header("Access-Control-Allow-Origin: *");
+
+$valid_types = array( "Journal Article" ) ;
+
 // This is the API, 2 possibilities: show the app list or show a specific app by id.
 // This would normally be pulled from a database but for demo purposes, I will be hardcoding the return values.
 
-// make the curl sparql query request
+// make the curl query to elasticsearch
 function request($url)
 {
     // is curl installed?
@@ -34,67 +37,25 @@ function request($url)
 
 function get_citation_by_id($id)
 {
-    $format = 'json';
-
-    $query = "
-    PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
-    PREFIX owl:   <http://www.w3.org/2002/07/owl#>
-    PREFIX bibo: <http://purl.org/ontology/bibo/>
-    PREFIX dco: <http://info.deepcarbon.net/schema#>
-    PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-    PREFIX vivo: <http://vivoweb.org/ontology/core#>
-
-    DESCRIBE ?p ?dcoid ?author_role ?author ?journal
-    WHERE
-    {
-        ?dcoid a dco:DCOID .
-        ?dcoid rdfs:label ?id .
-        ?p dco:hasDcoId ?dcoid .
-        { ?p a bibo:Article . } UNION 
-        { ?p a bibo:Book . } UNION 
-        { ?p a bibo:DocumentPart . } UNION 
-        { ?p a dco:Poster . } UNION 
-        { ?p a bibo:Thesis . }
-        ?p vivo:relatedBy ?author_role .
-        ?author_role a vivo:Authorship .
-        ?author_role vivo:relates ?author .
-        FILTER (?author != ?p)
-        ?author a foaf:Person .
-        OPTIONAL {
-            ?p vivo:hasPublicationVenue ?journal .
-            ?journal a bibo:Journal .
-        }
-    }
-    ";
-
-    $query = str_replace("?id", '"'.$id.'"', $query);
-
-    // DCO-ID for test: 11121/3524-1246-5132-9229-CC
-
-    $searchUrl = 'http://deepcarbon.tw.rpi.edu:3030/VIVO/query?'
-                .'query='.urlencode($query)
-                .'&output='.$format;
+    $pos = strpos($id, '/');
+    $dcoid = substr( $id, $pos + 1 ) ;
+    $searchUrl = "http://data.deepcarbon.net/es/dco/publication/_search?q=_id:$dcoid";
 
     $responseArray = json_decode(request($searchUrl), true);
 
     return $responseArray;
 }
 
-function format_name($name)
-{
-    $name = explode(",", $name);
-    return trim($name[0])." ".substr(trim($name[1]),0,1);
-}
-
-$value = "An error has occurred";
-
+// grab the dcoid from the http request
 $dcoid = "";
 
 if (isset($_GET["get_citation"]))
 {
     $dcoid = $_GET["get_citation"];
+}
+else if (strpos($_SERVER["PATH_INFO"],"/11121/") == 0)
+{
+    $dcoid = substr( $_SERVER["PATH_INFO"], 1 );
 }
 else if (isset($_GET["action"]))
 {
@@ -103,76 +64,79 @@ else if (isset($_GET["action"]))
         case "get_citation":
             if (isset($_GET["id"]))
                 $dcoid = $_GET["id"];
-            else
-                $value = "Missing argument";
             break;
         default:
             $value = $_GET["action"];
+            break;
     }
 }
 
-if( !empty( $dcoid ) ) 
-    $value = get_citation_by_id($dcoid);
+if( empty( $dcoid ) ) 
+{
+    exit( "No publication DCO-ID was specified" ) ;
+}
 
-if ($value == null)
-    exit("Invalid DCO-ID!");
+// given the dcoid go get the publication from elasticsearch
+$value = get_citation_by_id($dcoid);
+
+// see if there was a hit for the dcoid
+if( !isset( $value["hits"] ) || !isset( $value["hits"]["hits"] ) || count( $value["hits"]["hits"] ) != 1 || !isset( $value["hits"]["hits"][0]["_source"] ) )
+{
+    exit( "Unable to find information about $dcoid" ) ;
+}
+
+$pub = $value["hits"]["hits"][0]["_source"] ;
+
+// right now we can only generate citations for certain types
+if( !in_array( $pub["mostSpecificType"], $valid_types ) )
+{
+    exit( "Unable to generate citation for this publication" ) ;
+}
 
 // build the full dcoid
 $dx = "http://dx.deepcarbon.net/".$dcoid;
 
-// find the publication object in the json document
-$pub=null;
-foreach( $value as $puburi => $thingy )
+// helper funciton to format an author name into LAST FIMI format.
+function format_name($name)
 {
-    if(isset($thingy["http://info.deepcarbon.net/schema#hasDcoId"]) && $thingy["http://info.deepcarbon.net/schema#hasDcoId"][0]["value"] == $dx)
+    $comma_pos = strpos($name, ",");
+    if ( $comma_pos != FALSE)
     {
-        $pub = $thingy ;
-        break ;
+        $last_name = substr($name, 0, $comma_pos);
+        $fm_names = substr($name, $comma_pos); 
     }
+    else 
+    {
+        $space_pos = strrpos($name, " ");
+        $last_name = substr($name, $space_pos);
+        $fm_names = substr($name, 0, $space_pos); 
+    }
+    $fm_names = preg_split( "/[,|.| |\-]/", $fm_names );
+    $output = $last_name . " ";
+    for ( $i = 0; $i < sizeof($fm_names); $i++)
+    {
+        $output .= strtoupper($fm_names[$i][0]);
+    }
+    return $output;
 }
 
-// get the list of authors. pub -> relatedBy -> authorRole -> relates -> person
-// there's also a relates back to the publication so don't want that one
+// get the list of authors. They are already ordered in elasticsearch
 $authors = array();
-
-// if there's only one author then there won't be a rank, so start with 0. Otherwise rank starts with 1
-$rank = 0 ;
-if( isset( $pub["http://vivoweb.org/ontology/core#relatedBy"] ) )
+if( isset( $pub["authors"] ) && count( $pub["authors"] ) != 0 )
 {
-    $authorRoles = $pub["http://vivoweb.org/ontology/core#relatedBy"];
-    foreach( $authorRoles as $role )
+    foreach( $pub["authors"] as $author )
     {
-        $roleuri = $role["value"];
-        if( isset( $value[$roleuri] ) )
-        {
-            $relates = $value[$roleuri]["http://vivoweb.org/ontology/core#relates"];
-            if( isset( $value[$roleuri]["http://vivoweb.org/ontology/core#rank"] ) )
-            {
-                $rank = $value[$roleuri]["http://vivoweb.org/ontology/core#rank"][0]["value"];
-            }
-            $author = null ;
-            foreach( $relates as $relate )
-            {
-                if( $relate["value"] != $puburi )
-                {
-                    $author = $value[$relate["value"]];
-                    $name = $author["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"];
-                    $authors[intval($rank)] = format_name($name);
-                }
-            }
-        } else {
-            $authors[intval($rank)] = "Missing" ;
-        }
+        array_push( $authors, format_name($author["name"]) ) ;
     }
 }
-ksort( $authors ) ;
 
 // now we generate the citation
 $citation = "";
+$html = "<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/citation.css\"><div class=\"citationbody\">" ;
 
 // the authors go first and should be in order
 $isfirst = true ;
-foreach($authors as $key => $author)
+foreach($authors as $author)
 {
     if( $isfirst ) {
         $citation .= $author;
@@ -183,54 +147,47 @@ foreach($authors as $key => $author)
 }
 
 // if there's a year then add it
-if( isset( $pub["http://info.deepcarbon.net/schema#yearOfPublicationYear"] ) )
+if( isset( $pub["publicationYear"] ) )
 {
-    $citation .= " (" . $pub["http://info.deepcarbon.net/schema#yearOfPublicationYear"][0]["value"] . ") " ;
-} else if( isset( $pub["http://info.deepcarbon.net/schema#yearOfPublication"] ) )
-{
-    $citation .= " (" . $pub["http://info.deepcarbon.net/schema#yearOfPublication"][0]["value"] . ")" ;
+    $citation .= " (" . $pub["publicationYear"] . ") " ;
 }
 
 // if there's a doi then use it as the publication's link. Otherwise use the dcoid.
-if( isset( $pub["http://purl.org/ontology/bibo/doi"] ) )
+if( isset( $pub["doi"] ) )
 {
-    $link = "https://dx.doi.org/" . $pub["http://purl.org/ontology/bibo/doi"][0]["value"] ;
+    $link = "https://dx.doi.org/" . $pub["doi"] ;
 } else {
     $link = $dx ;
 }
 
 // add the title with the link
-$citation .= " <a href=\"$link\">" . $pub["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"] . "</a>.";
+$citation .= " <a class=\"citationlink\" href=\"$link\">" . $pub["title"] . "</a>.";
 
 // if there's a publication venue (journal, book or whatever) then add it
-if( isset( $pub["http://vivoweb.org/ontology/core#hasPublicationVenue"] ) )
+if( isset( $pub["publishedIn"] ) )
 {
-    $venue = $value[$pub["http://vivoweb.org/ontology/core#hasPublicationVenue"][0]["value"]] ;
-    $venueLabel = $venue["http://www.w3.org/2000/01/rdf-schema#label"][0]["value"];
-    $citation .= " " . $venueLabel ;
+    $citation .= " " . $pub["publishedIn"]["name"] ;
 }
 
 // volue(issue):start-end
-if( isset( $pub["http://purl.org/ontology/bibo/volume"] ) )
+if( isset( $pub["volume"] ) )
 {
-    $volume = $pub["http://purl.org/ontology/bibo/volume"][0]["value"];
-    $citation .= " " . $volume ;
+    $citation .= " " . $pub["volume"] ;
 }
 
-if( isset( $pub["http://purl.org/ontology/bibo/issue"] ) )
+if( isset( $pub["issue"] ) )
 {
-    $issue = $pub["http://purl.org/ontology/bibo/issue"][0]["value"];
-    $citation .= "(" . $issue . ")";
+    $citation .= "(" . $pub["issue"] . ")";
 }
 
-if( isset( $pub["http://purl.org/ontology/bibo/pageStart"] ) )
+if( isset( $pub["pageStart"] ) )
 {
-    $start = $pub["http://purl.org/ontology/bibo/pageStart"][0]["value"];
+    $start = $pub["pageStart"] ;
 }
 
-if( isset( $pub["http://purl.org/ontology/bibo/pageEnd"] ) )
+if( isset( $pub["pageEnd"] ) )
 {
-    $end = $pub["http://purl.org/ontology/bibo/pageEnd"][0]["value"];
+    $end = $pub["pageEnd"] ;
 }
 if( isset($start) || isset($end) )
 {
@@ -239,8 +196,10 @@ if( isset($start) || isset($end) )
     if( isset($end) ) $citation .= "-" . $end ;
 }
 
+$html .= "$citation</div>";
+
 // and we're done, exit with the generated citation
 //exit(json_encode($pub));
-exit($citation);
+exit($html);
 
 ?>
